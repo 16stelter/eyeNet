@@ -14,7 +14,7 @@ import dataset
 import numpy as np
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 1
+BATCH_SIZE = 16
 EPOCHS = 50
 EARLY_TERMINATION = 5
 
@@ -23,8 +23,6 @@ class EyeNet(nn.Module):
     def __init__(self, from_checkpoint=None):
         super(EyeNet, self).__init__()
         self.model = fcn_resnet50(pretrained_backbone=True, num_classes=2, progress=True).to(DEVICE)
-        if from_checkpoint:
-            self.load_model(from_checkpoint)
         self.opt = optim.SGD(self.model.parameters(), lr=0.1)
         self.min_val_loss = np.inf
         self.best_val_epoch = -1
@@ -39,6 +37,9 @@ class EyeNet(nn.Module):
         self.center_bias = torch.from_numpy(np.load("../cv2_project_data/center_bias_density.npy")).to(DEVICE)
         self.register_parameter(name='density', param=torch.nn.Parameter(torch.log(self.center_bias), requires_grad=False))
 
+        if from_checkpoint:
+            self.load_model(from_checkpoint)
+
         print("Init successful...")
         print("DEVICE is " + str(DEVICE))
 
@@ -49,7 +50,7 @@ class EyeNet(nn.Module):
         return torch.add(smooth, self.center_bias)
 
     def load_model(self, path):
-        self.model.load_state_dict(torch.load(path))
+        self.model.load_state_dict(torch.load(path))  # map_location=torch.device('cpu')
 
     def train_loop(self, epochs, ds_loader, vs_loader):
         self.model.train()
@@ -110,6 +111,8 @@ class EyeNet(nn.Module):
             img = self.forward(x).detach().numpy()[0][0]
             plt.imshow(img, interpolation='nearest')
             plt.savefig("./{}.png".format(step))
+            plt.imshow(y[0][0], interpolation='nearest')
+            plt.savefig("./{}_t.png".format(step))
 
 
 if __name__ == "__main__":
@@ -136,8 +139,8 @@ if __name__ == "__main__":
 
     net = EyeNet()
 
-    tsloader = DataLoader(vs, batch_size=BATCH_SIZE, shuffle=False) # TODO: This is currently the validation file!!!!
-    net.predict_to_file(vsloader)
-
     net.train_loop(EPOCHS, dsloader, vsloader)
+
+    # tsloader = DataLoader(vs, batch_size=BATCH_SIZE, shuffle=False) # TODO: This is currently the validation file!!!!
+    # net.predict_to_file(tsloader)
 
