@@ -4,11 +4,20 @@ import imageio.v2 as imageio
 from torch.utils.data import Dataset
 
 
+def read_text_file(filename):
+    lines = []
+    with open(filename, 'r') as file:
+        for line in file:
+            line = line.strip()  # or some other preprocessing
+            lines.append(line)
+    return lines
+
+
 class FixationDataset(Dataset):
     def __init__(self, root_dir, image_file, fixation_file, image_transform=None, fixation_transform=None):
         self.root_dir = root_dir
-        self.image_files = self.read_text_file(image_file)
-        self.fixation_files = self.read_text_file(fixation_file)
+        self.image_files = read_text_file(image_file)
+        self.fixation_files = read_text_file(fixation_file)
         self.image_transform = image_transform
         self.fixation_transform = fixation_transform
         assert len(self.image_files) == len(
@@ -32,11 +41,3 @@ class FixationDataset(Dataset):
             sample["fixation"] = self.fixation_transform(sample["fixation"])
 
         return sample["image"], sample["fixation"]
-
-    def read_text_file(self, filename):
-        lines = []
-        with open(filename, 'r') as file:
-            for line in file:
-                line = line.strip()  # or some other preprocessing
-                lines.append(line)
-        return lines
