@@ -4,6 +4,7 @@ import torch
 from torch import nn, optim, conv2d
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from torchvision.models.segmentation import fcn_resnet50
 from torchvision.transforms import Compose, ToTensor, RandomApply, ColorJitter, RandomPosterize, RandomSolarize, \
     RandomAdjustSharpness
@@ -26,6 +27,8 @@ class EyeNet(nn.Module):
         self.opt = optim.SGD(self.model.parameters(), lr=0.1)
         self.min_val_loss = np.inf
         self.best_val_epoch = -1
+
+        self.writer = SummaryWriter()
 
         g = self.gaussian(25, 11.2)
         kernel = torch.matmul(g.unsqueeze(-1), g.unsqueeze(-1).t())
@@ -59,6 +62,7 @@ class EyeNet(nn.Module):
                 y = y.to(DEVICE)
                 pred = self.forward(x)
                 loss = F.binary_cross_entropy_with_logits(pred, y)
+                self.writer.add_scalar("loss/train", loss, e*step)
                 #print(loss)
                 loss.backward()
                 self.opt.step()
@@ -72,6 +76,7 @@ class EyeNet(nn.Module):
                 pred = self.forward(x)
                 val_loss += F.binary_cross_entropy_with_logits(pred, y).item()
             val_loss = val_loss / len(vs_loader)
+            self.writer.add_scalar("loss/val", val_loss, e)
             print("Validation loss was " + str(val_loss) + ".")
             if self.min_val_loss > val_loss:
                 print("This is an improvement by " + str(self.min_val_loss - val_loss) + ".")
