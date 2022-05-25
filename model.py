@@ -16,14 +16,14 @@ import numpy as np
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 16
 EPOCHS = 50
-EARLY_TERMINATION = 5
+EARLY_TERMINATION = 15
 
 
 class EyeNet(nn.Module):
     def __init__(self, from_checkpoint=None):
         super(EyeNet, self).__init__()
         self.model = fcn_resnet50(pretrained_backbone=True, num_classes=2, progress=True).to(DEVICE)
-        self.opt = optim.SGD(self.model.parameters(), lr=0.1)
+        self.opt = optim.Adam(self.model.parameters(), lr=0.0001)
         self.min_val_loss = np.inf
         self.best_val_epoch = -1
 
@@ -55,6 +55,7 @@ class EyeNet(nn.Module):
     def train_loop(self, epochs, ds_loader, vs_loader):
         self.model.train()
         early_term_count = 0
+        criterion = nn.MSELoss()
         for e in range(epochs):
             print("Starting Epoch", e)
             # training on train dataset
@@ -63,7 +64,7 @@ class EyeNet(nn.Module):
                 x = x.to(DEVICE)
                 y = y.to(DEVICE)
                 pred = self.forward(x)
-                loss = F.binary_cross_entropy_with_logits(pred, y)
+                loss = criterion(pred, y)
                 self.writer.add_scalar("loss/train", loss, e*step)
                 #print(loss)
                 loss.backward()
@@ -76,7 +77,7 @@ class EyeNet(nn.Module):
                 x = x.to(DEVICE)
                 y = y.to(DEVICE)
                 pred = self.forward(x)
-                val_loss += F.binary_cross_entropy_with_logits(pred, y).item()
+                val_loss += criterion(pred, y).item()
             val_loss = val_loss / len(vs_loader)
             self.writer.add_scalar("loss/val", val_loss, e)
             print("Validation loss was " + str(val_loss) + ".")
