@@ -8,12 +8,13 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision.models.segmentation import fcn_resnet50
 from torchvision.transforms import Compose, ToTensor, RandomApply, ColorJitter, RandomPosterize, RandomSolarize, \
     RandomAdjustSharpness
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 import dataset
 import numpy as np
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 32
+BATCH_SIZE = 1
 EPOCHS = 50
 EARLY_TERMINATION = 5
 
@@ -104,6 +105,12 @@ class EyeNet(nn.Module):
         gauss = torch.exp(-x.pow(2.0) / (2 * sigma ** 2))
         return gauss / gauss.sum()
 
+    def predict_to_file(self, data):
+        for step, (x, y) in enumerate(tqdm(vsloader)):
+            img = self.forward(x).detach().numpy()[0][0]
+            plt.imshow(img, interpolation='nearest')
+            plt.savefig("./{}.png".format(step))
+
 
 if __name__ == "__main__":
     transforms = Compose([ToTensor(),
@@ -129,4 +136,8 @@ if __name__ == "__main__":
 
     net = EyeNet()
 
+    tsloader = DataLoader(vs, batch_size=BATCH_SIZE, shuffle=False) # TODO: This is currently the validation file!!!!
+    net.predict_to_file(vsloader)
+
     net.train_loop(EPOCHS, dsloader, vsloader)
+
