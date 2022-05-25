@@ -1,9 +1,12 @@
+import random
+
 import torch
 from torch import nn, optim, conv2d
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.models.segmentation import fcn_resnet50
-from torchvision.transforms import Compose, ToTensor
+from torchvision.transforms import Compose, ToTensor, RandomApply, ColorJitter, RandomPosterize, RandomSolarize, \
+    RandomAdjustSharpness
 from tqdm import tqdm
 import dataset
 import numpy as np
@@ -63,14 +66,12 @@ class EyeNet(nn.Module):
             # evaluation on val dataset
             self.model.eval()
             val_loss = 0.0
-            steps = 0
             for step, (x, y) in enumerate(tqdm(vs_loader)):
                 x = x.to(DEVICE)
                 y = y.to(DEVICE)
                 pred = self.forward(x)
                 val_loss += F.binary_cross_entropy_with_logits(pred, y).item()
-                steps += 1
-            val_loss = val_loss / steps
+            val_loss = val_loss / len(vs_loader)
             print("Validation loss was " + str(val_loss) + ".")
             if self.min_val_loss > val_loss:
                 print("This is an improvement by " + str(self.min_val_loss - val_loss) + ".")
@@ -100,10 +101,16 @@ class EyeNet(nn.Module):
 
 
 if __name__ == "__main__":
+    transforms = Compose([ToTensor(),
+                          RandomApply(torch.nn.ModuleList([ColorJitter(0.1, 0.1, 0.1, 0.1)]), 0.1),
+                          RandomPosterize(3, 0.1),
+                          RandomSolarize(192.0, 0.1),
+                          RandomAdjustSharpness(random.uniform(-0.5, 0.5), 0.1)])
+
     ds = dataset.FixationDataset('../cv2_project_data',
                                  '../cv2_project_data/0.txt',
                                  '../cv2_project_data/1.txt',
-                                 Compose([ToTensor()]),
+                                 transforms,
                                  Compose([ToTensor()])
                                  )
     dsloader = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True)
