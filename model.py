@@ -13,15 +13,15 @@ import dataset
 import numpy as np
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 1
-EPOCHS = 10
-EARLY_TERMINATION = 3
+BATCH_SIZE = 32
+EPOCHS = 50
+EARLY_TERMINATION = 5
 
 
 class EyeNet(nn.Module):
     def __init__(self, from_checkpoint=None):
         super(EyeNet, self).__init__()
-        self.model = fcn_resnet50(pretrained_backbone=True, num_classes=2, progress=True)
+        self.model = fcn_resnet50(pretrained_backbone=True, num_classes=2, progress=True).to(DEVICE)
         if from_checkpoint:
             self.load_model(from_checkpoint)
         self.opt = optim.SGD(self.model.parameters(), lr=0.1)
@@ -35,7 +35,7 @@ class EyeNet(nn.Module):
         self.model.register_parameter(name='kernel', param=torch.nn.Parameter(kernel, requires_grad=False))
 
         # center bias
-        self.center_bias = torch.from_numpy(np.load("../cv2_project_data/center_bias_density.npy"))
+        self.center_bias = torch.from_numpy(np.load("../cv2_project_data/center_bias_density.npy")).to(DEVICE)
         self.register_parameter(name='density', param=torch.nn.Parameter(torch.log(self.center_bias), requires_grad=False))
 
         print("Init successful...")
@@ -95,7 +95,7 @@ class EyeNet(nn.Module):
         #plt.show()
 
     def gaussian(self, window_size: int, sigma: float) -> torch.Tensor:
-        device, dtype = None, None
+        device, dtype = DEVICE, None
         if isinstance(sigma, torch.Tensor):
             device, dtype = sigma.device, sigma.dtype
         x = torch.arange(window_size, device=device, dtype=dtype) - window_size // 2
@@ -108,8 +108,8 @@ class EyeNet(nn.Module):
 if __name__ == "__main__":
     transforms = Compose([ToTensor(),
                           RandomApply(torch.nn.ModuleList([ColorJitter(0.1, 0.1, 0.1, 0.1)]), 0.1),
-                          RandomSolarize(192.0, 0.1),
-                          RandomAdjustSharpness(random.uniform(-0.5, 0.5), 0.1)])
+                          RandomSolarize(0.5, 0.1),
+                          RandomAdjustSharpness(random.uniform(0.5, 1.5), 0.1)])
 
     ds = dataset.FixationDataset('../cv2_project_data',
                                  '../cv2_project_data/train_images.txt',
@@ -128,6 +128,5 @@ if __name__ == "__main__":
     vsloader = DataLoader(vs, batch_size=BATCH_SIZE, shuffle=True)
 
     net = EyeNet()
-    net = net.to(DEVICE)
 
     net.train_loop(EPOCHS, dsloader, vsloader)
