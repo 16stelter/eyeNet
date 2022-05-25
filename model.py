@@ -107,16 +107,16 @@ if __name__ == "__main__":
                           RandomAdjustSharpness(random.uniform(-0.5, 0.5), 0.1)])
 
     ds = dataset.FixationDataset('../cv2_project_data',
-                                 '../cv2_project_data/0.txt',
-                                 '../cv2_project_data/1.txt',
+                                 '../cv2_project_data/train_images.txt',
+                                 '../cv2_project_data/train_fixations.txt',
                                  transforms,
                                  Compose([ToTensor()])
                                  )
     dsloader = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True)
 
     vs = dataset.FixationDataset('../cv2_project_data',
-                                 '../cv2_project_data/0.txt',
-                                 '../cv2_project_data/1.txt',
+                                 '../cv2_project_data/val_images.txt',
+                                 '../cv2_project_data/val_fixations.txt',
                                  Compose([ToTensor()]),
                                  Compose([ToTensor()])
                                  )
