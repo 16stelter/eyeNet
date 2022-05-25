@@ -14,7 +14,7 @@ import dataset
 import numpy as np
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 16
+BATCH_SIZE = 1
 EPOCHS = 50
 EARLY_TERMINATION = 5
 
@@ -65,7 +65,6 @@ class EyeNet(nn.Module):
                 pred = self.forward(x)
                 loss = F.binary_cross_entropy_with_logits(pred, y)
                 self.writer.add_scalar("loss/train", loss, e*step)
-                #print(loss)
                 loss.backward()
                 self.opt.step()
                 self.opt.zero_grad()
@@ -106,11 +105,11 @@ class EyeNet(nn.Module):
         gauss = torch.exp(-x.pow(2.0) / (2 * sigma ** 2))
         return gauss / gauss.sum()
 
-    def predict_to_file(self, data):
-        for step, (x, y) in enumerate(tqdm(vsloader)):
+    def predict_to_file(self, vs_loader):
+        for step, (x, y) in enumerate(tqdm(vs_loader)):
             img = self.forward(x).detach().numpy()[0][0]
-            plt.imshow(img, interpolation='nearest')
-            plt.savefig("./{}.png".format(step))
+            plt.imshow(img, interpolation='nearest', cmap='gray', vmin=0, vmax=1)
+            plt.savefig("./prediction-{}.png".format(step+4134)) #TODO: name is still wrong
             plt.imshow(y[0][0], interpolation='nearest')
             plt.savefig("./{}_t.png".format(step))
 
@@ -141,6 +140,11 @@ if __name__ == "__main__":
 
     net.train_loop(EPOCHS, dsloader, vsloader)
 
-    # tsloader = DataLoader(vs, batch_size=BATCH_SIZE, shuffle=False) # TODO: This is currently the validation file!!!!
-    # net.predict_to_file(tsloader)
+    ts = dataset.FixationDataset('../cv2_project_data',
+                                 '../cv2_project_data/test_images.txt',
+                                 '../cv2_project_data/test_images.txt',
+                                 Compose([ToTensor()]),
+                                 Compose([ToTensor()]),)
+    tsloader = DataLoader(ts, batch_size=BATCH_SIZE, shuffle=False)
+    net.predict_to_file(tsloader)
 
