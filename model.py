@@ -9,8 +9,9 @@ import dataset
 import numpy as np
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 8
+BATCH_SIZE = 1
 EPOCHS = 10
+EARLY_TERMINATION = 3
 
 
 class EyeNet(nn.Module):
@@ -45,6 +46,7 @@ class EyeNet(nn.Module):
 
     def train_loop(self, epochs, ds_loader, vs_loader):
         self.model.train()
+        early_term_count = 0
         for e in range(epochs):
             print("Starting Epoch", e)
             # training on train dataset
@@ -54,7 +56,7 @@ class EyeNet(nn.Module):
                 y = y.to(DEVICE)
                 pred = self.forward(x)
                 loss = F.binary_cross_entropy_with_logits(pred, y)
-                print(loss)
+                #print(loss)
                 loss.backward()
                 self.opt.step()
                 self.opt.zero_grad()
@@ -66,14 +68,20 @@ class EyeNet(nn.Module):
                 x = x.to(DEVICE)
                 y = y.to(DEVICE)
                 pred = self.forward(x)
-                val_loss += F.binary_cross_entropy_with_logits(pred, y)
+                val_loss += F.binary_cross_entropy_with_logits(pred, y).item()
                 steps += 1
             val_loss = val_loss / steps
-            print("Validation loss was " + str(val_loss)+ ".")
+            print("Validation loss was " + str(val_loss) + ".")
             if self.min_val_loss > val_loss:
+                print("This is an improvement by " + str(self.min_val_loss - val_loss) + ".")
                 self.min_val_loss = val_loss
                 self.best_val_epoch = e
-                print("This is an improvement by " + str(self.min_val_loss - val_loss) + ".")
+                early_term_count = 0
+            else:
+                early_term_count += 1
+                print("No improvement. " + str(early_term_count) + " / " + str(EARLY_TERMINATION))
+                if(early_term_count >= EARLY_TERMINATION):
+                    break
             torch.save(self.model.state_dict(), '../checkpoints/{}.pth'.format(e))
         print("Training completed. Best validation epoch was checkpoint " + str(self.best_val_epoch) + ".")
         #img = self.forward(x).detach().numpy()[0][0]
@@ -93,16 +101,16 @@ class EyeNet(nn.Module):
 
 if __name__ == "__main__":
     ds = dataset.FixationDataset('../cv2_project_data',
-                                 '../cv2_project_data/train_images.txt',
-                                 '../cv2_project_data/train_fixations.txt',
+                                 '../cv2_project_data/0.txt',
+                                 '../cv2_project_data/1.txt',
                                  Compose([ToTensor()]),
                                  Compose([ToTensor()])
                                  )
     dsloader = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True)
 
     vs = dataset.FixationDataset('../cv2_project_data',
-                                 '../cv2_project_data/val_images.txt',
-                                 '../cv2_project_data/val_fixations.txt',
+                                 '../cv2_project_data/0.txt',
+                                 '../cv2_project_data/1.txt',
                                  Compose([ToTensor()]),
                                  Compose([ToTensor()])
                                  )
