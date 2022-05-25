@@ -103,7 +103,6 @@ class EyeNet(nn.Module):
 if __name__ == "__main__":
     transforms = Compose([ToTensor(),
                           RandomApply(torch.nn.ModuleList([ColorJitter(0.1, 0.1, 0.1, 0.1)]), 0.1),
-                          RandomPosterize(3, 0.1),
                           RandomSolarize(192.0, 0.1),
                           RandomAdjustSharpness(random.uniform(-0.5, 0.5), 0.1)])
 
