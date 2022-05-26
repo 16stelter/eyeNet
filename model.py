@@ -14,9 +14,9 @@ import dataset
 import numpy as np
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 1
-EPOCHS = 50
-EARLY_TERMINATION = 15
+BATCH_SIZE = 16
+EPOCHS = 300
+EARLY_TERMINATION = 30
 
 
 class EyeNet(nn.Module):
@@ -88,13 +88,10 @@ class EyeNet(nn.Module):
             else:
                 early_term_count += 1
                 print("No improvement. " + str(early_term_count) + " / " + str(EARLY_TERMINATION))
-                if(early_term_count >= EARLY_TERMINATION):
+                if early_term_count >= EARLY_TERMINATION:
                     break
             torch.save(self.model.state_dict(), '../checkpoints/{}.pth'.format(e))
         print("Training completed. Best validation epoch was checkpoint " + str(self.best_val_epoch) + ".")
-        #img = self.forward(x).detach().numpy()[0][0]
-        #plt.imshow(img, interpolation='nearest')
-        #plt.show()
 
     def gaussian(self, window_size: int, sigma: float) -> torch.Tensor:
         device, dtype = DEVICE, None
@@ -110,7 +107,7 @@ class EyeNet(nn.Module):
         for step, (x, y) in enumerate(tqdm(vs_loader)):
             img = self.forward(x).detach().numpy()[0][0]
             plt.imshow(img, interpolation='nearest', cmap='gray', vmin=0, vmax=1)
-            plt.savefig("./prediction-{}.png".format(step+4134)) #TODO: name is still wrong
+            plt.savefig("./pred/prediction-{}.png".format(step+4134))
             plt.imshow(y[0][0], interpolation='nearest')
             plt.savefig("./{}_t.png".format(step))
 
@@ -137,7 +134,7 @@ if __name__ == "__main__":
                                  )
     vsloader = DataLoader(vs, batch_size=BATCH_SIZE, shuffle=True)
 
-    net = EyeNet()
+    net = EyeNet("../82.pth")
 
     net.train_loop(EPOCHS, dsloader, vsloader)
 
@@ -145,7 +142,8 @@ if __name__ == "__main__":
                                  '../cv2_project_data/test_images.txt',
                                  '../cv2_project_data/test_images.txt',
                                  Compose([ToTensor()]),
-                                 Compose([ToTensor()]),)
+                                 Compose([ToTensor()]))
+    
     tsloader = DataLoader(ts, batch_size=BATCH_SIZE, shuffle=False)
     net.predict_to_file(tsloader)
 
